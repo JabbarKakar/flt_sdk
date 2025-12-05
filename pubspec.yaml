@@ -1,0 +1,24 @@
+name: flt_sdk
+description: "A Flutter SDK for FLT chat functionality."
+version: 1.0.0+1
+homepage: https://example.com
+
+environment:
+  sdk: ^3.9.0
+  flutter: ">=3.9.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.1.0
+  
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/images/new_logo.png
