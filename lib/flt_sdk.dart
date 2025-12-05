@@ -1,6 +1,5 @@
 library flt_sdk;
 
-import 'package:flt_sdk/flt_sdk.dart';
 import 'package:flutter/material.dart';
 
 export 'src/flt_config.dart';
