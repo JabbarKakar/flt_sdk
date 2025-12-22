@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flt_sdk/flt_sdk.dart';
-import 'package:flt_sdk/src/flt_chat_widget.dart';
 
 class FLTChatButton extends StatefulWidget {
   final String? initialMessage;
@@ -23,57 +22,48 @@ class FLTChatButton extends StatefulWidget {
 }
 
 class _FLTChatButtonState extends State<FLTChatButton> {
-  bool _showChat = false;
-  OverlayEntry? _overlayEntry;
+  bool _isChatOpen = false;
 
-  void _toggleChat() {
-    if (_showChat) {
-      // If the chat is already shown, close it
-      _overlayEntry?.remove();
-      _overlayEntry = null;
-      _showChat = false;
-    } else {
-      // Show the chat widget in an overlay
-      _overlayEntry = OverlayEntry(
-        builder: (context) => Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          top: 0,
-          child: FLTChatWidget(
-            initialMessage: widget.initialMessage,
-            onChatClosed: () {
-              _overlayEntry?.remove();
-              _overlayEntry = null;
-              _showChat = false;
-              widget.onChatClosed?.call();
-            },
-          ),
+  void _openChat() {
+    setState(() {
+      _isChatOpen = true;
+    });
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => FLTChatScreen(
+          initialMessage: widget.initialMessage,
+          onChatClosed: () {
+            setState(() {
+              _isChatOpen = false;
+            });
+            widget.onChatClosed?.call();
+            if (Navigator.canPop(context)) {
+              Navigator.of(context).pop();
+            }
+          },
         ),
-      );
-      Overlay.of(context).insert(_overlayEntry!);
-      _showChat = true;
-    }
-  }
-
-  @override
-  void dispose() {
-    _overlayEntry?.remove();
-    super.dispose();
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final config = FLTSDK.config;
-    final buttonSize = widget.size ?? 56.0;
+    final size = widget.size ?? 56.0;
+    final backgroundColor = widget.backgroundColor ?? (config.primaryColor ?? Colors.blue);
+    final iconColor = widget.iconColor ?? Colors.white;
 
     return FloatingActionButton(
-      onPressed: _toggleChat,
-      backgroundColor: widget.backgroundColor ?? config.primaryColor,
+      onPressed: _isChatOpen ? null : _openChat,
+      backgroundColor: backgroundColor,
       child: Icon(
         Icons.chat,
-        color: widget.iconColor ?? Colors.white,
+        color: iconColor,
+        size: size * 0.5,
       ),
+      tooltip: 'Open Chat',
     );
   }
 }
+

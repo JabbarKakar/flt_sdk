@@ -29,26 +29,3 @@ migrate_working_dir/
 .flutter-plugins-dependencies
 /build/
 /coverage/
-
-# Example app build files
-example/build/
-example/**/build/
-example/**/.dart_tool/
-example/**/local.properties
-example/**/*.iml
-example/**/.gradle/
-example/**/gradle-wrapper.jar
-example/**/gradlew
-example/**/gradlew.bat
-example/**/GeneratedPluginRegistrant.*
-example/**/ephemeral/
-example/**/Flutter/ephemeral/
-example/**/Flutter/Generated.xcconfig
-example/**/Flutter/flutter_export_environment.sh
-example/**/ios/Flutter/AppFrameworkInfo.plist
-example/**/ios/Flutter/Debug.xcconfig
-example/**/ios/Flutter/Release.xcconfig
-example/**/macos/Flutter/ephemeral/
-example/**/macos/Flutter/Flutter-Debug.xcconfig
-example/**/macos/Flutter/Flutter-Release.xcconfig
-example/**/macos/Flutter/GeneratedPluginRegistrant.swift

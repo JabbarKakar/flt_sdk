@@ -22,7 +22,8 @@ class MyApp extends StatelessWidget {
     // );
 
     return MaterialApp(
-      title: 'FLT SDK Example',
+      debugShowCheckedModeBanner: false,
+      title: 'FLT CHAT SDK',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
@@ -40,67 +41,18 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  bool _showChat = false;
-
-  void _toggleChat() {
-    setState(() {
-      _showChat = !_showChat;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('FLT SDK Example'),
+        title: const Text('FLT CHAT SDK'),
       ),
-      // body: Center(
-      //   child: Column(
-      //     mainAxisAlignment: MainAxisAlignment.center,
-      //     children: <Widget>[
-      //       const Text(
-      //         'This is an example app using the FLT SDK',
-      //       ),
-      //       const SizedBox(height: 20),
-      //       ElevatedButton(
-      //         onPressed: _toggleChat,
-      //         child: const Text('Open Chat'),
-      //       ),
-      //     ],
-      //   ),
-      // ),
-      floatingActionButton: FLTSDK.createChatButton(
-        // Removed initialMessage parameter
+      body: FLTSDK.createChatWidget(
+        // Opens chat screen directly without needing the floating button
         onChatClosed: () {
-          setState(() {
-            _showChat = false;
-          });
+          // Optionally handle close; for example, Navigator.pop(context);
         },
       ),
-      bottomSheet: _showChat
-          ? Container(
-              height: MediaQuery.of(context).size.height * 0.7,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 10,
-                    offset: Offset(0, -2),
-                  ),
-                ],
-              ),
-              child: FLTSDK.createChatWidget(
-                // Removed initialMessage parameter
-                onChatClosed: () {
-                  setState(() {
-                    _showChat = false;
-                  });
-                },
-              ),
-            )
-          : null,
     );
   }
 }
