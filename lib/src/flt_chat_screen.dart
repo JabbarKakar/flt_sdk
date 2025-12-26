@@ -41,6 +41,8 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
 
   bool _isWaitingForResponse = false;
   late AnimationController _animationController;
+  Timer? _streamingTimer;
+  bool _isStreaming = false;
 
   static String _getCurrentTime() {
     final now = DateTime.now();
@@ -79,6 +81,7 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
     _scrollController.dispose();
     _animationController.dispose();
     _focusNode.dispose();
+    _streamingTimer?.cancel();
     super.dispose();
   }
 
@@ -126,6 +129,50 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
           debugPrint('📝 Message status updated: $messageId -> $status');
         }
       }
+    });
+  }
+
+  void _streamText(String fullText, String messageId) {
+    _streamingTimer?.cancel();
+    
+    setState(() {
+      _isStreaming = true;
+      _isWaitingForResponse = false;
+    });
+
+    int currentIndex = 0;
+    const int charsPerTick = 2; // Number of characters to add per tick
+    const duration = Duration(milliseconds: 30); // Speed of typing
+
+    _streamingTimer = Timer.periodic(duration, (timer) {
+      if (currentIndex >= fullText.length) {
+        timer.cancel();
+        setState(() {
+          _isStreaming = false;
+        });
+        return;
+      }
+
+      setState(() {
+        final index = _messages.indexWhere((msg) => msg['id'] == messageId);
+        if (index != -1) {
+          // Add characters up to the next position
+          final endIndex = (currentIndex + charsPerTick).clamp(0, fullText.length);
+          _messages[index]['text'] = fullText.substring(0, endIndex);
+          currentIndex = endIndex;
+        }
+      });
+
+      // Auto-scroll as text appears
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 100),
+            curve: Curves.easeOut,
+          );
+        }
+      });
     });
   }
 
@@ -181,17 +228,15 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
             debugPrint('✅ Found message in "output" field: $assistantMessage');
           }
 
-          setState(() {
-            _isWaitingForResponse = false;
-          });
-
           // Clean up the message
           final cleanedMessage = assistantMessage.trim();
           if (FLTSDK.config.enableLogging ?? true) {
             debugPrint('🧹 Cleaned message: $cleanedMessage');
           }
 
-          _addMessage(cleanedMessage, false);
+          // Add an empty message first, then stream the text into it
+          final assistantMessageId = _addMessage('', false);
+          _streamText(cleanedMessage, assistantMessageId);
 
           Timer(const Duration(milliseconds: 300), () {
             _updateMessageStatus(messageId, 'read');

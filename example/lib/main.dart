@@ -10,16 +10,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Initialize the SDK with custom configuration
-    // FLTSDK.init(
-    //   FLTConfig(
-    //     appName: 'My App',
-    //     primaryColor: Colors.blue,
-    //     secondaryColor: Colors.orange,
-    //     webhookUrl: 'https://aidev.3utilities.com/webhook/77d24095-3bb5-4158-bfeb-63696c716758/chat',
-    //     enableLogging: true,
-    //   ),
-    // );
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
