@@ -330,9 +330,11 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
     return SelectableText(
       text,
       style: TextStyle(
-        color: isMe ? Colors.white : Colors.black,
-        fontSize: 18,
-        height: 1.4,
+        color: isMe ? Colors.white : Colors.black87,
+        fontSize: 16,
+        height: 1.5,
+        fontWeight: FontWeight.w400,
+        letterSpacing: 0.2,
       ),
     );
   }
@@ -362,9 +364,10 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
             heading,
             style: TextStyle(
               color: FLTSDK.config.primaryColor ?? AppColors.primaryColorLite,
-              fontSize: 22,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
-              height: 1.3,
+              height: 1.4,
+              letterSpacing: 0.3,
             ),
           ),
         );
@@ -383,9 +386,11 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
           child: SelectableText(
             cleanLine,
             style: TextStyle(
-              color: isMe ? Colors.white : Colors.black,
-              fontSize: 18,
-              height: 1.4,
+              color: isMe ? Colors.white : Colors.black87,
+              fontSize: 16,
+              height: 1.5,
+              fontWeight: FontWeight.w400,
+              letterSpacing: 0.2,
             ),
           ),
         );
@@ -416,8 +421,9 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
             style: const TextStyle(
               color: Colors.black,
               fontWeight: FontWeight.bold,
-              fontSize: 20,
-              height: 1.4,
+              fontSize: 17,
+              height: 1.5,
+              letterSpacing: 0.2,
             ),
           ));
         }
@@ -427,9 +433,11 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
           spans.add(TextSpan(
             text: parts[i],
             style: TextStyle(
-              color: isMe ? Colors.white : Colors.black,
-              fontSize: 18,
-              height: 1.4,
+              color: isMe ? Colors.white : Colors.black87,
+              fontSize: 16,
+              height: 1.5,
+              fontWeight: FontWeight.w400,
+              letterSpacing: 0.2,
             ),
           ));
         }
@@ -454,28 +462,58 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              color: FLTSDK.config.primaryColor ?? AppColors.primaryColorLite,
-              borderRadius: BorderRadius.circular(18),
+              gradient: LinearGradient(
+                colors: [
+                  FLTSDK.config.primaryColor ?? AppColors.primaryColorLite,
+                  (FLTSDK.config.primaryColor ?? AppColors.primaryColorLite).withOpacity(0.8),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: (FLTSDK.config.primaryColor ?? AppColors.primaryColorLite).withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: const Icon(
               Icons.support_agent,
               color: Colors.white,
-              size: 20,
+              size: 22,
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             decoration: BoxDecoration(
-              color: AppColors.cardBackground,
-              borderRadius: BorderRadius.circular(20),
+              gradient: LinearGradient(
+                colors: [
+                  Colors.grey.shade50,
+                  Colors.white,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.grey.shade200,
+                width: 1,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
-                  blurRadius: 10,
+                  color: Colors.black.withOpacity(0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
               ],
@@ -492,12 +530,24 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
                     return Transform.scale(
                       scale: scale,
                       child: Container(
-                        margin: EdgeInsets.only(right: index < 2 ? 4.0 : 0.0),
-                        width: 8,
-                        height: 8,
+                        margin: EdgeInsets.only(right: index < 2 ? 6.0 : 0.0),
+                        width: 10,
+                        height: 10,
                         decoration: BoxDecoration(
-                          color: FLTSDK.config.primaryColor ?? AppColors.primaryColorLite,
+                          gradient: LinearGradient(
+                            colors: [
+                              FLTSDK.config.primaryColor ?? AppColors.primaryColorLite,
+                              (FLTSDK.config.primaryColor ?? AppColors.primaryColorLite).withOpacity(0.7),
+                            ],
+                          ),
                           shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: (FLTSDK.config.primaryColor ?? AppColors.primaryColorLite).withOpacity(0.3),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                       ),
                     );
@@ -555,9 +605,26 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
                     Expanded(
                       child: Container(
                         decoration: BoxDecoration(
-                          color: AppColors.cardBackground,
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: AppColors.borderColor),
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.grey.shade50,
+                              Colors.white,
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(28),
+                          border: Border.all(
+                            color: Colors.grey.shade300,
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.04),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: TextField(
                           controller: _messageController,
@@ -566,21 +633,23 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
                           maxLines: null,
                           minLines: 1,
                           textInputAction: TextInputAction.newline,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             hintText: 'Type your message...',
                             hintStyle: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 18,
+                              color: Colors.grey.shade400,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w400,
                             ),
                             border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 12,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 14,
                             ),
                           ),
                           style: const TextStyle(
-                            fontSize: 18,
+                            fontSize: 16,
                             color: Colors.black,
+                            fontWeight: FontWeight.w400,
                           ),
                           onTap: () {
                             _focusNode.requestFocus();
@@ -595,30 +664,49 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
                     ),
                     const SizedBox(width: 12),
                     Container(
+                      width: 56,
+                      height: 56,
                       decoration: BoxDecoration(
-                        color: config.primaryColor ?? AppColors.primaryColorLite,
+                        gradient: LinearGradient(
+                          colors: [
+                            config.primaryColor ?? AppColors.primaryColorLite,
+                            (config.primaryColor ?? AppColors.primaryColorLite).withOpacity(0.85),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: (config.primaryColor ?? AppColors.primaryColorLite).withOpacity(0.3),
-                            blurRadius: 8,
+                            color: (config.primaryColor ?? AppColors.primaryColorLite).withOpacity(0.4),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                          BoxShadow(
+                            color: (config.primaryColor ?? AppColors.primaryColorLite).withOpacity(0.2),
+                            blurRadius: 6,
                             offset: const Offset(0, 2),
                           ),
                         ],
                       ),
-                      child: IconButton(
-                        onPressed: _sendMessage,
-                        icon: const Icon(
-                          Icons.send,
-                          color: Colors.white,
-                          size: 20,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _sendMessage,
+                          borderRadius: BorderRadius.circular(28),
+                          child: const Center(
+                            child: Icon(
+                              Icons.send_rounded,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
+              ) ],
           ),
         ),
       ),
@@ -631,25 +719,39 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
     final config = FLTSDK.config;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 20),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isMe) ...[
             Container(
-              width: 36,
-              height: 36,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: config.primaryColor ?? AppColors.primaryColorLite,
-                borderRadius: BorderRadius.circular(18),
+                gradient: LinearGradient(
+                  colors: [
+                    config.primaryColor ?? AppColors.primaryColorLite,
+                    (config.primaryColor ?? AppColors.primaryColorLite).withOpacity(0.8),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: (config.primaryColor ?? AppColors.primaryColorLite).withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: const Icon(
                 Icons.support_agent,
                 color: Colors.white,
-                size: 20,
+                size: 22,
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 12),
           ],
           Expanded(
             child: Column(
@@ -661,17 +763,44 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
                       maxWidth: MediaQuery.of(context).size.width * 0.75,
                     ),
                     padding: isMe
-                        ? const EdgeInsets.symmetric(horizontal: 12, vertical: 8)
-                        : const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        ? const EdgeInsets.symmetric(horizontal: 16, vertical: 12)
+                        : const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                     decoration: BoxDecoration(
-                      color: isMe
-                          ? (config.primaryColor ?? AppColors.primaryColorLite)
-                          : AppColors.cardBackground,
-                      borderRadius: BorderRadius.circular(isMe ? 16 : 20),
+                      gradient: isMe
+                          ? LinearGradient(
+                              colors: [
+                                config.primaryColor ?? AppColors.primaryColorLite,
+                                (config.primaryColor ?? AppColors.primaryColorLite).withOpacity(0.9),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            )
+                          : LinearGradient(
+                              colors: [
+                                Colors.grey.shade50,
+                                Colors.white,
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                      borderRadius: BorderRadius.circular(isMe ? 20 : 24),
+                      border: isMe
+                          ? null
+                          : Border.all(
+                              color: Colors.grey.shade200,
+                              width: 1,
+                            ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.08),
-                          blurRadius: 10,
+                          color: isMe
+                              ? (config.primaryColor ?? AppColors.primaryColorLite).withOpacity(0.3)
+                              : Colors.black.withOpacity(0.06),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.02),
+                          blurRadius: 4,
                           offset: const Offset(0, 2),
                         ),
                       ],
@@ -733,18 +862,32 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
             ),
           ),
           if (isMe) ...[
-            const SizedBox(width: 8),
+            const SizedBox(width: 12),
             Container(
-              width: 36,
-              height: 36,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: config.primaryColor ?? AppColors.primaryColorLite,
-                borderRadius: BorderRadius.circular(18),
+                gradient: LinearGradient(
+                  colors: [
+                    config.primaryColor ?? AppColors.primaryColorLite,
+                    (config.primaryColor ?? AppColors.primaryColorLite).withOpacity(0.8),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: (config.primaryColor ?? AppColors.primaryColorLite).withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: const Icon(
                 Icons.person,
                 color: Colors.white,
-                size: 20,
+                size: 22,
               ),
             ),
           ],
