@@ -34,9 +34,6 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('FLT CHAT SDK'),
-      ),
       body: FLTSDK.createChatWidget(
         // Opens chat screen directly without needing the floating button
         onChatClosed: () {

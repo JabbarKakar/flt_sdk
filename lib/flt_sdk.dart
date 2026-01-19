@@ -1,7 +1,8 @@
 library flt_sdk;
 
-import 'package:flt_sdk/flt_sdk.dart';
 import 'package:flutter/material.dart';
+import 'src/flt_chat_screen.dart';
+import 'src/flt_config.dart';
 
 export 'src/constants.dart';
 export 'src/flt_chat_screen.dart';

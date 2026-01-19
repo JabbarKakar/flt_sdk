@@ -41,8 +41,10 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
 
   bool _isWaitingForResponse = false;
   late AnimationController _animationController;
+  late AnimationController _typingAnimationController;
   Timer? _streamingTimer;
   bool _isStreaming = false;
+  final Map<String, AnimationController> _messageAnimations = {};
 
   static String _getCurrentTime() {
     final now = DateTime.now();
@@ -65,10 +67,14 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
       duration: const Duration(milliseconds: 1200),
     )..repeat();
 
+    _typingAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToBottom();
 
-      // Only send initial message if it's not empty and not null
       if (widget.initialMessage?.isNotEmpty == true) {
         _messageController.text = widget.initialMessage!;
       }
@@ -80,23 +86,39 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
     _messageController.dispose();
     _scrollController.dispose();
     _animationController.dispose();
+    _typingAnimationController.dispose();
     _focusNode.dispose();
     _streamingTimer?.cancel();
+    for (var controller in _messageAnimations.values) {
+      controller.dispose();
+    }
+    _messageAnimations.clear();
     super.dispose();
   }
 
-  void _scrollToBottom() {
+  void _scrollToBottom({bool smooth = true}) {
     if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
+      if (smooth) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutCubic,
+        );
+      } else {
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      }
     }
   }
 
   String _addMessage(String text, bool isMe, {String status = 'pending'}) {
     final messageId = DateTime.now().millisecondsSinceEpoch.toString();
+
+    // Create animation controller for this message
+    final animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _messageAnimations[messageId] = animationController;
 
     setState(() {
       _messages.add({
@@ -108,6 +130,9 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
         'id': messageId,
       });
     });
+
+    // Animate message appearance
+    animationController.forward();
 
     if (FLTSDK.config.enableLogging ?? true) {
       debugPrint('✅ Message added to chat: ${isMe ? "User" : "Assistant"} - $text');
@@ -141,8 +166,8 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
     });
 
     int currentIndex = 0;
-    const int charsPerTick = 2; // Number of characters to add per tick
-    const duration = Duration(milliseconds: 30); // Speed of typing
+    const int charsPerTick = 2;
+    const duration = Duration(milliseconds: 30);
 
     _streamingTimer = Timer.periodic(duration, (timer) {
       if (currentIndex >= fullText.length) {
@@ -156,14 +181,12 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
       setState(() {
         final index = _messages.indexWhere((msg) => msg['id'] == messageId);
         if (index != -1) {
-          // Add characters up to the next position
           final endIndex = (currentIndex + charsPerTick).clamp(0, fullText.length);
           _messages[index]['text'] = fullText.substring(0, endIndex);
           currentIndex = endIndex;
         }
       });
 
-      // Auto-scroll as text appears
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollController.hasClients) {
           _scrollController.animateTo(
@@ -186,7 +209,6 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
 
       final config = FLTSDK.config;
 
-      // Fix for the map spread operator issue
       Map<String, String> headers = {
         'Content-Type': 'application/json',
       };
@@ -221,20 +243,17 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
           _updateMessageStatus(messageId, 'delivered');
         });
 
-        // Extract message from the 'output' field
         if (responseData['output'] != null && responseData['output'].isNotEmpty) {
           final assistantMessage = responseData['output'].toString();
           if (FLTSDK.config.enableLogging ?? true) {
             debugPrint('✅ Found message in "output" field: $assistantMessage');
           }
 
-          // Clean up the message
           final cleanedMessage = assistantMessage.trim();
           if (FLTSDK.config.enableLogging ?? true) {
             debugPrint('🧹 Cleaned message: $cleanedMessage');
           }
 
-          // Add an empty message first, then stream the text into it
           final assistantMessageId = _addMessage('', false);
           _streamText(cleanedMessage, assistantMessageId);
 
@@ -321,7 +340,6 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
     }
   }
 
-
   Widget _buildFormattedMessage(String text, bool isMe) {
     if (_isStructuredMessage(text)) {
       return _buildStructuredMessage(text, isMe);
@@ -331,10 +349,10 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
       text,
       style: TextStyle(
         color: isMe ? Colors.white : Colors.black87,
-        fontSize: 16,
+        fontSize: 15.5,
         height: 1.5,
         fontWeight: FontWeight.w400,
-        letterSpacing: 0.2,
+        letterSpacing: 0.15,
       ),
     );
   }
@@ -349,48 +367,42 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
 
     for (String line in lines) {
       if (line.trim().isEmpty) {
-        formattedWidgets.add(const SizedBox(height: 4));
+        formattedWidgets.add(const SizedBox(height: 6));
         continue;
       }
 
       Widget lineWidget;
 
-      // Handle ### headings (markdown h3) - BLUE BOLD
       if (line.trim().startsWith('###')) {
         final heading = line.replaceAll('###', '').trim();
         lineWidget = Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.only(bottom: 8, top: 4),
           child: Text(
             heading,
             style: TextStyle(
               color: FLTSDK.config.primaryColor ?? AppColors.primaryColorLite,
-              fontSize: 20,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
               height: 1.4,
-              letterSpacing: 0.3,
+              letterSpacing: 0.2,
             ),
           ),
         );
-      }
-      // Handle lines with **bold** text - BLACK BOLD
-      else if (line.contains('**')) {
+      } else if (line.contains('**')) {
         lineWidget = _buildBoldTextLine(line, isMe);
-      }
-      // All other text - remove markdown formatting and display as regular text
-      else {
-        // Remove any markdown formatting that might be present
+      } else {
         String cleanLine = line.replaceAll(RegExp(r'^\d+\.\s'), '').replaceAll(RegExp(r'^-\s*'), '');
 
         lineWidget = Padding(
-          padding: const EdgeInsets.symmetric(vertical: 1),
+          padding: const EdgeInsets.symmetric(vertical: 2),
           child: SelectableText(
             cleanLine,
             style: TextStyle(
               color: isMe ? Colors.white : Colors.black87,
-              fontSize: 16,
+              fontSize: 15.5,
               height: 1.5,
               fontWeight: FontWeight.w400,
-              letterSpacing: 0.2,
+              letterSpacing: 0.15,
             ),
           ),
         );
@@ -406,7 +418,6 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
   }
 
   Widget _buildBoldTextLine(String line, bool isMe) {
-    // Remove any list markers first
     String cleanLine = line.replaceAll(RegExp(r'^\d+\.\s'), '').replaceAll(RegExp(r'^-\s*'), '');
 
     List<TextSpan> spans = [];
@@ -414,30 +425,28 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
 
     for (int i = 0; i < parts.length; i++) {
       if (i % 2 == 1) {
-        // Odd indices are bold text (between **)
         if (parts[i].isNotEmpty) {
           spans.add(TextSpan(
             text: parts[i],
-            style: const TextStyle(
-              color: Colors.black,
+            style: TextStyle(
+              color: isMe ? Colors.white : Colors.black87,
               fontWeight: FontWeight.bold,
-              fontSize: 17,
+              fontSize: 16,
               height: 1.5,
               letterSpacing: 0.2,
             ),
           ));
         }
       } else {
-        // Even indices are regular text
         if (parts[i].isNotEmpty) {
           spans.add(TextSpan(
             text: parts[i],
             style: TextStyle(
               color: isMe ? Colors.white : Colors.black87,
-              fontSize: 16,
+              fontSize: 15.5,
               height: 1.5,
               fontWeight: FontWeight.w400,
-              letterSpacing: 0.2,
+              letterSpacing: 0.15,
             ),
           ));
         }
@@ -445,76 +454,66 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1),
+      padding: const EdgeInsets.symmetric(vertical: 2),
       child: SelectableText.rich(
-        TextSpan(
-          children: spans,
-        ),
+        TextSpan(children: spans),
       ),
     );
   }
 
+  Widget _buildTypingIndicator() {
+    final config = FLTSDK.config;
+    final primaryColor = config.primaryColor ?? AppColors.primaryColorLite;
 
-  Widget _buildWaveDots() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 12, top: 2),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  FLTSDK.config.primaryColor ?? AppColors.primaryColorLite,
-                  (FLTSDK.config.primaryColor ?? AppColors.primaryColorLite).withOpacity(0.8),
+                  primaryColor,
+                  primaryColor.withOpacity(0.85),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(18),
               boxShadow: [
                 BoxShadow(
-                  color: (FLTSDK.config.primaryColor ?? AppColors.primaryColorLite).withOpacity(0.3),
-                  blurRadius: 8,
+                  color: primaryColor.withOpacity(0.25),
+                  blurRadius: 12,
                   offset: const Offset(0, 4),
+                  spreadRadius: 0,
                 ),
               ],
             ),
             child: const Icon(
-              Icons.support_agent,
+              Icons.support_agent_rounded,
               color: Colors.white,
-              size: 22,
+              size: 20,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.grey.shade50,
-                  Colors.white,
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              color: Colors.white,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
                 color: Colors.grey.shade200,
-                width: 1,
+                width: 1.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
+                  color: Colors.black.withOpacity(0.04),
                   blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
-                  blurRadius: 4,
                   offset: const Offset(0, 2),
+                  spreadRadius: 0,
                 ),
               ],
             ),
@@ -522,33 +521,18 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
               mainAxisSize: MainAxisSize.min,
               children: List.generate(3, (index) {
                 return AnimatedBuilder(
-                  animation: _animationController,
+                  animation: _typingAnimationController,
                   builder: (context, child) {
                     final delay = index * 0.2;
-                    final value = (_animationController.value + delay) % 1.0;
-                    final scale = 0.6 + 0.4 * (0.5 + 0.5 * sin(value * 2 * pi));
-                    return Transform.scale(
-                      scale: scale,
-                      child: Container(
-                        margin: EdgeInsets.only(right: index < 2 ? 6.0 : 0.0),
-                        width: 10,
-                        height: 10,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              FLTSDK.config.primaryColor ?? AppColors.primaryColorLite,
-                              (FLTSDK.config.primaryColor ?? AppColors.primaryColorLite).withOpacity(0.7),
-                            ],
-                          ),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: (FLTSDK.config.primaryColor ?? AppColors.primaryColorLite).withOpacity(0.3),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
+                    final value = (_typingAnimationController.value + delay) % 1.0;
+                    final opacity = 0.3 + 0.7 * (0.5 + 0.5 * sin(value * 2 * pi));
+                    return Container(
+                      margin: EdgeInsets.only(right: index < 2 ? 6.0 : 0.0),
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: primaryColor.withOpacity(opacity),
+                        shape: BoxShape.circle,
                       ),
                     );
                   },
@@ -564,149 +548,156 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
   @override
   Widget build(BuildContext context) {
     final config = FLTSDK.config;
+    final primaryColor = config.primaryColor ?? AppColors.primaryColorLite;
 
-    return SafeArea(
-
-      child: Scaffold(
-        resizeToAvoidBottomInset: false,
-        backgroundColor: config.backgroundColor ?? AppColors.whiteColor,
-        body: SafeArea(
-          child: Column(
-            children: [
-              Expanded(
+    return Scaffold(
+      backgroundColor: config.backgroundColor ?? AppColors.whiteColor,
+      body: SafeArea(
+        top: false,
+        child: Column(
+          children: [
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: config.backgroundColor ?? AppColors.whiteColor,
+                ),
                 child: ListView.builder(
                   controller: _scrollController,
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
                   itemCount: _messages.length + (_isWaitingForResponse ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (_isWaitingForResponse && index == _messages.length) {
-                      return _buildWaveDots();
+                      return _buildTypingIndicator();
                     }
                     final message = _messages[index];
                     return _buildMessageBubble(message);
                   },
                 ),
               ),
-      
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: config.backgroundColor ?? AppColors.whiteColor,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, -2),
+            ),
+            _buildInputArea(primaryColor, config),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputArea(Color primaryColor, FLTConfig config) {
+    return Container(
+      decoration: BoxDecoration(
+        color: config.backgroundColor ?? AppColors.whiteColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 20,
+            offset: const Offset(0, -4),
+            spreadRadius: 0,
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Container(
+                  constraints: const BoxConstraints(maxHeight: 120),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(
+                      color: Colors.grey.shade300,
+                      width: 1.5,
                     ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.grey.shade50,
-                              Colors.white,
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(28),
-                          border: Border.all(
-                            color: Colors.grey.shade300,
-                            width: 1.5,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: TextField(
-                          controller: _messageController,
-                          focusNode: _focusNode,
-                          keyboardType: TextInputType.multiline,
-                          maxLines: null,
-                          minLines: 1,
-                          textInputAction: TextInputAction.newline,
-                          decoration: InputDecoration(
-                            hintText: 'Type your message...',
-                            hintStyle: TextStyle(
-                              color: Colors.grey.shade400,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w400,
-                            ),
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 14,
-                            ),
-                          ),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Colors.black,
-                            fontWeight: FontWeight.w400,
-                          ),
-                          onTap: () {
-                            _focusNode.requestFocus();
-                          },
-                          onSubmitted: (value) {
-                            if (value.trim().isNotEmpty) {
-                              _sendMessage();
-                            }
-                          },
-                        ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.03),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    controller: _messageController,
+                    focusNode: _focusNode,
+                    keyboardType: TextInputType.multiline,
+                    maxLines: null,
+                    minLines: 1,
+                    textInputAction: TextInputAction.newline,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: InputDecoration(
+                      hintText: 'Type your message...',
+                      hintStyle: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w400,
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 14,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            config.primaryColor ?? AppColors.primaryColorLite,
-                            (config.primaryColor ?? AppColors.primaryColorLite).withOpacity(0.85),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: (config.primaryColor ?? AppColors.primaryColorLite).withOpacity(0.4),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                          BoxShadow(
-                            color: (config.primaryColor ?? AppColors.primaryColorLite).withOpacity(0.2),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
+                    style: const TextStyle(
+                      fontSize: 15.5,
+                      color: Colors.black87,
+                      fontWeight: FontWeight.w400,
+                      height: 1.4,
+                    ),
+                    onSubmitted: (value) {
+                      if (value.trim().isNotEmpty) {
+                        _sendMessage();
+                      }
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _sendMessage,
+                  borderRadius: BorderRadius.circular(28),
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          primaryColor,
+                          primaryColor.withOpacity(0.9),
                         ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: _sendMessage,
-                          borderRadius: BorderRadius.circular(28),
-                          child: const Center(
-                            child: Icon(
-                              Icons.send_rounded,
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                          ),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: primaryColor.withOpacity(0.35),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                          spreadRadius: 0,
                         ),
-                      ),
+                        BoxShadow(
+                          color: primaryColor.withOpacity(0.15),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                          spreadRadius: 0,
+                        ),
+                      ],
                     ),
-                  ],
+                    child: const Icon(
+                      Icons.send_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
                 ),
-              ) ],
+              ),
+            ],
           ),
         ),
       ),
@@ -717,216 +708,223 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
     final isMe = message['isMe'] as bool;
     final status = message['status'] as String;
     final config = FLTSDK.config;
+    final primaryColor = config.primaryColor ?? AppColors.primaryColorLite;
+    final messageId = message['id'] as String;
+    final animationController = _messageAnimations[messageId];
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 20),
+    Widget bubble = Container(
+      margin: EdgeInsets.only(
+        bottom: 12,
+        top: 2,
+      ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
           if (!isMe) ...[
             Container(
-              width: 40,
-              height: 40,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    config.primaryColor ?? AppColors.primaryColorLite,
-                    (config.primaryColor ?? AppColors.primaryColorLite).withOpacity(0.8),
+                    primaryColor,
+                    primaryColor.withOpacity(0.85),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
-                    color: (config.primaryColor ?? AppColors.primaryColorLite).withOpacity(0.3),
-                    blurRadius: 8,
+                    color: primaryColor.withOpacity(0.25),
+                    blurRadius: 12,
                     offset: const Offset(0, 4),
+                    spreadRadius: 0,
                   ),
                 ],
               ),
               child: const Icon(
-                Icons.support_agent,
+                Icons.support_agent_rounded,
                 color: Colors.white,
-                size: 22,
+                size: 20,
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
           ],
-          Expanded(
-            child: Column(
-              crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-              children: [
-                IntrinsicWidth(
-                  child: Container(
-                    constraints: BoxConstraints(
-                      maxWidth: MediaQuery.of(context).size.width * 0.75,
+          Flexible(
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.75,
+              ),
+              padding: isMe
+                  ? const EdgeInsets.symmetric(horizontal: 14, vertical: 10)
+                  : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                gradient: isMe
+                    ? LinearGradient(
+                        colors: [
+                          primaryColor,
+                          primaryColor.withOpacity(0.92),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                color: isMe ? null : Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(24),
+                  topRight: const Radius.circular(24),
+                  bottomLeft: Radius.circular(isMe ? 24 : 4),
+                  bottomRight: Radius.circular(isMe ? 4 : 24),
+                ),
+                border: isMe
+                    ? null
+                    : Border.all(
+                        color: Colors.grey.shade200,
+                        width: 1.5,
+                      ),
+                boxShadow: [
+                  BoxShadow(
+                    color: isMe
+                        ? primaryColor.withOpacity(0.25)
+                        : Colors.black.withOpacity(0.06),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                    spreadRadius: 0,
+                  ),
+                  if (!isMe)
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.02),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                      spreadRadius: 0,
                     ),
-                    padding: isMe
-                        ? const EdgeInsets.symmetric(horizontal: 16, vertical: 12)
-                        : const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                    decoration: BoxDecoration(
-                      gradient: isMe
-                          ? LinearGradient(
-                              colors: [
-                                config.primaryColor ?? AppColors.primaryColorLite,
-                                (config.primaryColor ?? AppColors.primaryColorLite).withOpacity(0.9),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            )
-                          : LinearGradient(
-                              colors: [
-                                Colors.grey.shade50,
-                                Colors.white,
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                      borderRadius: BorderRadius.circular(isMe ? 20 : 24),
-                      border: isMe
-                          ? null
-                          : Border.all(
-                              color: Colors.grey.shade200,
-                              width: 1,
-                            ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: isMe
-                              ? (config.primaryColor ?? AppColors.primaryColorLite).withOpacity(0.3)
-                              : Colors.black.withOpacity(0.06),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
+                ],
+              ),
+              child: SelectionArea(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildFormattedMessage(message['text'] as String, isMe),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          message['time'] as String,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: isMe
+                                ? Colors.white.withOpacity(0.75)
+                                : AppColors.textSecondary,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 0.2,
+                          ),
                         ),
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.02),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
+                        if (isMe) ...[
+                          const SizedBox(width: 4),
+                          _buildStatusIcon(status),
+                        ],
                       ],
                     ),
-                    child: SelectionArea(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildFormattedMessage(message['text'] as String, isMe),
-                          if (isMe) ...[
-                            const SizedBox(height: 4),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    message['time'] as String,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.white.withOpacity(0.7),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 2),
-                                  _buildStatusIcon(status),
-                                ],
-                              ),
-                            ),
-                          ] else ...[
-                            const SizedBox(height: 6),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    message['time'] as String,
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                  if (isMe) ...[
-                                    const SizedBox(width: 3),
-                                    _buildStatusIcon(status),
-                                  ],
-                                ],
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
           if (isMe) ...[
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Container(
-              width: 40,
-              height: 40,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    config.primaryColor ?? AppColors.primaryColorLite,
-                    (config.primaryColor ?? AppColors.primaryColorLite).withOpacity(0.8),
+                    primaryColor.withOpacity(0.9),
+                    primaryColor.withOpacity(0.8),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
-                    color: (config.primaryColor ?? AppColors.primaryColorLite).withOpacity(0.3),
+                    color: primaryColor.withOpacity(0.2),
                     blurRadius: 8,
-                    offset: const Offset(0, 4),
+                    offset: const Offset(0, 3),
+                    spreadRadius: 0,
                   ),
                 ],
               ),
               child: const Icon(
-                Icons.person,
+                Icons.person_rounded,
                 color: Colors.white,
-                size: 22,
+                size: 20,
               ),
             ),
           ],
         ],
       ),
     );
+
+    if (animationController != null) {
+      return FadeTransition(
+        opacity: CurvedAnimation(
+          parent: animationController,
+          curve: Curves.easeOut,
+        ),
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: Offset(isMe ? 0.3 : -0.3, 0),
+            end: Offset.zero,
+          ).animate(
+            CurvedAnimation(
+              parent: animationController,
+              curve: Curves.easeOutCubic,
+            ),
+          ),
+          child: bubble,
+        ),
+      );
+    }
+
+    return bubble;
   }
 
   Widget _buildStatusIcon(String status) {
     switch (status) {
       case 'pending':
         return Icon(
-          Icons.access_time,
+          Icons.access_time_rounded,
           color: Colors.white.withOpacity(0.7),
-          size: 12,
+          size: 14,
         );
       case 'sent':
         return Icon(
-          Icons.check,
+          Icons.check_rounded,
           color: Colors.white.withOpacity(0.7),
-          size: 12,
+          size: 14,
         );
       case 'delivered':
         return Icon(
-          Icons.done_all,
+          Icons.done_all_rounded,
           color: Colors.white.withOpacity(0.7),
-          size: 12,
+          size: 14,
         );
       case 'read':
         return const Icon(
-          Icons.done_all,
+          Icons.done_all_rounded,
           color: AppColors.musteredColor,
-          size: 12,
+          size: 14,
         );
       case 'failed':
         return Icon(
-          Icons.error_outline,
+          Icons.error_outline_rounded,
           color: Colors.white.withOpacity(0.7),
-          size: 12,
+          size: 14,
         );
       default:
         return const SizedBox.shrink();
