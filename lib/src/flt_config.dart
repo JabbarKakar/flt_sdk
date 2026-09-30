@@ -32,7 +32,7 @@ class FLTConfig {
 
   factory FLTConfig.defaultConfig() {
     return FLTConfig(
-      webhookUrl: 'https://aidevv.3utilities.com/webhook/74ae5e61-7fd9-4b36-a952-43b257d4644e/chat',
+      webhookUrl: 'http://aiutilitiesdev.zapto.org:5678/webhook/f7880c6a-3b5c-44b8-ba38-28cdf1b62246/chat',
       appName: 'FLT Agent',
       logoPath: 'assets/images/new_logo.png',
       primaryColor: AppColors.primaryColorLite,

@@ -59,7 +59,7 @@ class FLTChatScreenState extends State<FLTChatScreen> with TickerProviderStateMi
     super.initState();
 
     final config = FLTSDK.config;
-    _webhookUrl = config.webhookUrl ?? 'https://aidev.3utilities.com/webhook/77d24095-3bb5-4158-bfeb-63696c716758/chat';
+    _webhookUrl = config.webhookUrl ?? 'http://aiutilitiesdev.zapto.org:5678/webhook/f7880c6a-3b5c-44b8-ba38-28cdf1b62246/chat';
     _maxRetryAttempts = config.maxRetryAttempts ?? 2;
 
     _animationController = AnimationController(
